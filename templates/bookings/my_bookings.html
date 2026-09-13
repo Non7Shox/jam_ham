@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}My Bookings — Grand Horizon Hotel{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="h2 mb-4">My Bookings</h1>
+
+    <h3 class="h5 text-muted mb-3">Upcoming</h3>
+    {% if upcoming_bookings %}
+    <div class="table-responsive mb-5">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Room</th>
+                    <th>Check-in</th>
+                    <th>Check-out</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for booking in upcoming_bookings %}
+                <tr>
+                    <td>
+                        <strong>Room {{ booking.room.room_number }}</strong>
+                        <br><small class="text-muted">{{ booking.room.room_type.name }}</small>
+                    </td>
+                    <td>{{ booking.check_in|date:"M j, Y" }}</td>
+                    <td>{{ booking.check_out|date:"M j, Y" }}</td>
+                    <td>${{ booking.total_price }}</td>
+                    <td>
+                        {% if booking.status == 'confirmed' %}
+                        <span class="badge bg-success">Confirmed</span>
+                        {% elif booking.status == 'pending' %}
+                        <span class="badge bg-warning text-dark">Pending</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ booking.get_status_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if booking.status != 'cancelled' %}
+                        <form method="post" action="{% url 'bookings:cancel_booking' booking.pk %}"
+                              onsubmit="return confirm('Cancel this booking?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Cancel</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted mb-5">You have no upcoming bookings.</p>
+    {% endif %}
+
+    <h3 class="h5 text-muted mb-3">Past &amp; Cancelled</h3>
+    {% if past_bookings %}
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Room</th>
+                    <th>Check-in</th>
+                    <th>Check-out</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for booking in past_bookings %}
+                <tr class="{% if booking.status == 'cancelled' %}text-muted{% endif %}">
+                    <td>
+                        <strong>Room {{ booking.room.room_number }}</strong>
+                        <br><small class="text-muted">{{ booking.room.room_type.name }}</small>
+                    </td>
+                    <td>{{ booking.check_in|date:"M j, Y" }}</td>
+                    <td>{{ booking.check_out|date:"M j, Y" }}</td>
+                    <td>${{ booking.total_price }}</td>
+                    <td>
+                        {% if booking.status == 'cancelled' %}
+                        <span class="badge bg-secondary">Cancelled</span>
+                        {% else %}
+                        <span class="badge bg-light text-dark">Completed</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted">No past bookings yet.</p>
+    {% endif %}
+
+    <a href="{% url 'hotels:home' %}" class="btn btn-hotel mt-4">Book a Room</a>
+</div>
+{% endblock %}

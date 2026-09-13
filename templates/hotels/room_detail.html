@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Room {{ room.room_number }} — Grand Horizon Hotel{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'hotels:home' %}">Rooms</a></li>
+            <li class="breadcrumb-item active">Room {{ room.room_number }}</li>
+        </ol>
+    </nav>
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            {% if room.primary_image %}
+            <img src="{{ room.primary_image.url }}" class="img-fluid rounded shadow w-100 mb-3" alt="Room {{ room.room_number }}">
+            {% endif %}
+            {% if room.images.all %}
+            <div class="row g-2">
+                {% for photo in room.images.all %}
+                <div class="col-4">
+                    <img src="{{ photo.image.url }}" class="img-fluid rounded" alt="{{ photo.caption|default:room.room_number }}">
+                </div>
+                {% endfor %}
+            </div>
+            {% elif not room.primary_image %}
+            <div class="bg-secondary rounded d-flex align-items-center justify-content-center text-white" style="height: 320px;">
+                <i class="bi bi-image" style="font-size: 4rem;"></i>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-lg-5">
+            <span class="badge bg-secondary mb-2">{{ room.room_type.name }}</span>
+            <h1 class="h2">Room {{ room.room_number }}</h1>
+            <p class="price-tag mb-3">${{ room.price_per_night }} <small class="text-muted fw-normal">/ night</small></p>
+
+            <ul class="list-unstyled mb-4">
+                <li class="mb-2"><i class="bi bi-people text-muted"></i> Capacity: {{ room.capacity }} guest{{ room.capacity|pluralize }}</li>
+                <li class="mb-2"><i class="bi bi-tag text-muted"></i> Type: {{ room.room_type.name }}</li>
+            </ul>
+
+            <h5>Description</h5>
+            <p class="text-muted">{{ room.description|linebreaksbr|default:"A comfortable room awaiting your stay." }}</p>
+
+            {% if room.room_type.description %}
+            <h5>Room Type</h5>
+            <p class="text-muted">{{ room.room_type.description|linebreaksbr }}</p>
+            {% endif %}
+
+            <div class="card shadow-sm mt-4">
+                <div class="card-body">
+                    <h5 class="card-title">Book This Room</h5>
+                    <form method="get" action="{% url 'bookings:book_room' room.pk %}" class="row g-3">
+                        <div class="col-md-6">
+                            <label for="book_check_in" class="form-label">Check-in</label>
+                            <input type="date" name="check_in" id="book_check_in" class="form-control"
+                                   value="{{ request.GET.check_in }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="book_check_out" class="form-label">Check-out</label>
+                            <input type="date" name="check_out" id="book_check_out" class="form-control"
+                                   value="{{ request.GET.check_out }}">
+                        </div>
+                        <div class="col-12">
+                            {% if user.is_authenticated %}
+                            <button type="submit" class="btn btn-hotel btn-lg w-100">
+                                <i class="bi bi-calendar-check"></i> Book Now
+                            </button>
+                            {% else %}
+                            <a href="{% url 'accounts:login' %}?next={% url 'bookings:book_room' room.pk %}"
+                               class="btn btn-hotel btn-lg w-100">
+                                <i class="bi bi-box-arrow-in-right"></i> Login to Book
+                            </a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

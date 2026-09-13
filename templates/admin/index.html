@@ -1,0 +1,211 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static "admin/css/dashboard.css" %}">
+<style>
+  .hotel-dashboard { margin-bottom: 24px; }
+  .hotel-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .hotel-stat {
+    display: block;
+    background: var(--darkened-bg, #f8f8f8);
+    border: 1px solid var(--hairline-color, #e8e8e8);
+    border-radius: 6px;
+    padding: 14px 16px;
+    text-decoration: none;
+    color: inherit;
+  }
+  .hotel-stat:hover {
+    border-color: var(--primary, #417690);
+  }
+  .hotel-stat .label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--body-quiet-color, #666);
+  }
+  .hotel-stat .value {
+    display: block;
+    font-size: 1.7rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 6px 0 4px;
+  }
+  .hotel-stat .hint {
+    font-size: 0.8rem;
+    color: var(--body-quiet-color, #666);
+  }
+  .hotel-panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 900px) {
+    .hotel-panels { grid-template-columns: 1fr; }
+  }
+  .hotel-panel table { width: 100%; }
+  .hotel-panel td, .hotel-panel th { padding: 6px 8px; }
+  .status-pending { color: #9a6700; }
+  .status-confirmed { color: #0d6b3a; }
+  .status-cancelled { color: #8a1f11; }
+</style>
+{% endblock %}
+
+{% block coltype %}colMS{% endblock %}
+{% block bodyclass %}{{ block.super }} dashboard{% endblock %}
+{% block nav-breadcrumbs %}{% endblock %}
+{% block nav-sidebar %}{% endblock %}
+
+{% block content %}
+<div style="background: linear-gradient(135deg, #4f46e5, #0284c7); padding: 18px 24px; border-radius: 10px; margin-bottom: 20px; color: #ffffff; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 12px rgba(79,70,229,0.25);">
+  <div>
+    <h3 style="margin: 0 0 4px 0; font-size: 1.25rem; font-weight: 700; color: #ffffff;">✨ Modern Grand Horizon Admin Dashboard</h3>
+    <p style="margin: 0; font-size: 0.88rem; opacity: 0.9;">Access live occupancy metrics, revenue analytics, room availability matrix, and quick reservation manager.</p>
+  </div>
+  <a href="{% url 'dashboard:index' %}" style="background: #ffffff; color: #4f46e5; text-decoration: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <span>Launch Control Center</span> &rarr;
+  </a>
+</div>
+
+<div class="hotel-dashboard">
+  <div class="hotel-stats">
+    {% for card in dashboard.cards %}
+    <a class="hotel-stat" href="{{ card.url }}">
+      <span class="label">{{ card.label }}</span>
+      <span class="value">{{ card.value }}</span>
+      <span class="hint">{{ card.hint }}</span>
+    </a>
+    {% endfor %}
+  </div>
+
+  <div class="hotel-panels">
+    <div class="module hotel-panel">
+      <h2>Today’s arrivals</h2>
+      {% if dashboard.arrivals_today %}
+      <table>
+        <thead>
+          <tr>
+            <th>Guest</th>
+            <th>Room</th>
+            <th>Until</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for booking in dashboard.arrivals_today %}
+          <tr>
+            <td><a href="{% url 'admin:bookings_booking_change' booking.pk %}">{{ booking.user }}</a></td>
+            <td>{{ booking.room.room_number }}</td>
+            <td>{{ booking.check_out }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p>No check-ins scheduled for today.</p>
+      {% endif %}
+    </div>
+
+    <div class="module hotel-panel">
+      <h2>Today’s departures</h2>
+      {% if dashboard.departures_today %}
+      <table>
+        <thead>
+          <tr>
+            <th>Guest</th>
+            <th>Room</th>
+            <th>From</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for booking in dashboard.departures_today %}
+          <tr>
+            <td><a href="{% url 'admin:bookings_booking_change' booking.pk %}">{{ booking.user }}</a></td>
+            <td>{{ booking.room.room_number }}</td>
+            <td>{{ booking.check_in }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p>No check-outs scheduled for today.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="module hotel-panel">
+    <h2>Recent bookings</h2>
+    {% if dashboard.recent_bookings %}
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Guest</th>
+          <th>Room</th>
+          <th>Dates</th>
+          <th>Status</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for booking in dashboard.recent_bookings %}
+        <tr>
+          <td><a href="{% url 'admin:bookings_booking_change' booking.pk %}">#{{ booking.pk }}</a></td>
+          <td>{{ booking.user }}</td>
+          <td>{{ booking.room }}</td>
+          <td>{{ booking.check_in }} → {{ booking.check_out }}</td>
+          <td class="status-{{ booking.status }}">{{ booking.get_status_display }}</td>
+          <td>${{ booking.total_price }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p>No bookings yet.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div id="content-main" class="app-list">
+  {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+</div>
+{% endblock %}
+
+{% block sidebar %}
+<div id="content-related">
+    <div class="module" id="recent-actions-module">
+        <h2>{% translate 'Recent actions' %}</h2>
+        <h3>{% translate 'My actions' %}</h3>
+            {% load log %}
+            {% get_admin_log 10 as admin_log for_user user %}
+            {% if not admin_log %}
+            <p>{% translate 'None available' %}</p>
+            {% else %}
+            <ul class="actionlist">
+            {% for entry in admin_log %}
+            <li class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %}changelink{% endif %}{% if entry.is_deletion %}deletelink{% endif %}">
+                <span class="visually-hidden">{% if entry.is_addition %}{% translate 'Added:' %}{% elif entry.is_change %}{% translate 'Changed:' %}{% elif entry.is_deletion %}{% translate 'Deleted:' %}{% endif %}</span>
+                {% if entry.is_deletion or not entry.get_admin_url %}
+                    {{ entry.object_repr }}
+                {% else %}
+                    <a href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
+                {% endif %}
+                <br>
+                {% if entry.content_type %}
+                    <span class="mini quiet">{% filter capfirst %}{{ entry.content_type.name }}{% endfilter %}</span>
+                {% else %}
+                    <span class="mini quiet">{% translate 'Unknown content' %}</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+            </ul>
+            {% endif %}
+    </div>
+</div>
+{% endblock %}

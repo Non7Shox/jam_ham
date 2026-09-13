@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block title %}Rooms — Grand Horizon Hotel{% endblock %}
+
+{% block content %}
+<section class="hero-section">
+    <div class="container text-center">
+        <h1 class="display-4 fw-bold mb-3">Welcome to Grand Horizon</h1>
+        <p class="lead mb-4">Discover comfort and elegance in every stay.</p>
+        <div class="search-box mx-auto" style="max-width: 900px;">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label for="id_check_in" class="form-label">Check-in</label>
+                    {{ search_form.check_in }}
+                    {% if search_form.check_in.errors %}
+                    <div class="text-danger small">{{ search_form.check_in.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    <label for="id_check_out" class="form-label">Check-out</label>
+                    {{ search_form.check_out }}
+                    {% if search_form.check_out.errors %}
+                    <div class="text-danger small">{{ search_form.check_out.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    <label for="id_guests" class="form-label">Guests</label>
+                    {{ search_form.guests }}
+                    {% if search_form.guests.errors %}
+                    <div class="text-danger small">{{ search_form.guests.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-hotel w-100">
+                        <i class="bi bi-search"></i> Search
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+
+<section class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h3 mb-0">
+            {% if search_applied %}
+            Available Rooms
+            {% else %}
+            Our Rooms
+            {% endif %}
+        </h2>
+        {% if search_applied %}
+        <span class="text-muted">{{ rooms|length }} room{{ rooms|length|pluralize }} found</span>
+        {% endif %}
+    </div>
+
+    {% if search_form.errors and not search_form.check_in.errors and not search_form.check_out.errors and not search_form.guests.errors %}
+    <div class="alert alert-danger">Please correct the search form errors above.</div>
+    {% endif %}
+
+    {% if rooms %}
+    <div class="row g-4">
+        {% for room in rooms %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card room-card h-100 shadow-sm">
+                {% if room.primary_image %}
+                <img src="{{ room.primary_image.url }}" class="card-img-top" alt="Room {{ room.room_number }}">
+                {% else %}
+                <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center text-white" style="height: 220px;">
+                    <i class="bi bi-image" style="font-size: 3rem;"></i>
+                </div>
+                {% endif %}
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title mb-0">Room {{ room.room_number }}</h5>
+                        <span class="badge bg-secondary">{{ room.room_type.name }}</span>
+                    </div>
+                    <p class="card-text text-muted small flex-grow-1">
+                        {{ room.description|truncatewords:20 }}
+                    </p>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <div>
+                            <span class="price-tag">${{ room.price_per_night }}</span>
+                            <small class="text-muted">/ night</small>
+                        </div>
+                        <small class="text-muted">
+                            <i class="bi bi-people"></i> Up to {{ room.capacity }}
+                        </small>
+                    </div>
+                    <a href="{% url 'hotels:room_detail' room.pk %}{% if search_applied %}?check_in={{ search_form.cleaned_data.check_in|date:'Y-m-d' }}&check_out={{ search_form.cleaned_data.check_out|date:'Y-m-d' }}{% endif %}"
+                       class="btn btn-hotel mt-3">
+                        View Details
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-door-closed display-1 text-muted"></i>
+        <p class="lead mt-3 text-muted">
+            {% if search_applied %}
+            No rooms match your search. Try different dates or guest count.
+            {% else %}
+            No rooms are available at the moment. Please check back soon.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

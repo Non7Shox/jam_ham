@@ -1,0 +1,566 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — Grand Horizon Hotel</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Custom Admin Dashboard Stylesheet -->
+  <link rel="stylesheet" href="{% static 'css/admin_dashboard.css' %}">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="dashboard-wrapper">
+    <!-- Sidebar Navigation -->
+    <aside class="dashboard-sidebar">
+      <div class="sidebar-header">
+        <div class="brand-icon">
+          <i class="fa-solid fa-hotel"></i>
+        </div>
+        <div class="brand-title">Grand Horizon</div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-category">Main Menu</div>
+        <a href="{% url 'dashboard:index' %}" class="nav-item active">
+          <i class="fa-solid fa-chart-pie"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="{% url 'dashboard:bookings_list' %}" class="nav-item">
+          <i class="fa-solid fa-calendar-check"></i>
+          <span>Bookings</span>
+        </a>
+        <a href="{% url 'dashboard:rooms_list' %}" class="nav-item">
+          <i class="fa-solid fa-bed"></i>
+          <span>Rooms & Suites</span>
+        </a>
+        <a href="{% url 'dashboard:users_list' %}" class="nav-item">
+          <i class="fa-solid fa-users"></i>
+          <span>Guests & Users</span>
+        </a>
+
+        <div class="nav-category">System</div>
+        <a href="{% url 'admin:index' %}" class="nav-item">
+          <i class="fa-solid fa-sliders"></i>
+          <span>Django Admin</span>
+        </a>
+        <a href="{% url 'hotels:home' %}" target="_blank" class="nav-item">
+          <i class="fa-solid fa-globe"></i>
+          <span>View Public Site</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-badge">
+          <div class="user-avatar">
+            {{ request.user.username|slice:":1"|upper }}
+          </div>
+          <div class="user-info">
+            <span class="user-name">{{ request.user.get_full_name|default:request.user.username }}</span>
+            <span class="user-role">Administrator</span>
+          </div>
+        </div>
+        <a href="{% url 'accounts:logout' %}" title="Logout" style="color: var(--text-muted);">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content Body -->
+    <main class="dashboard-main">
+
+      <!-- Flash Messages -->
+      {% if messages %}
+      <div class="messages-container">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+          <span><i class="fa-solid fa-circle-info"></i> {{ message }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Top Header Bar -->
+      <header class="top-header">
+        <div class="header-left">
+          <h1>Hotel Admin Control Center</h1>
+          <p><i class="fa-regular fa-calendar"></i> {{ today|date:"l, F j, Y" }} &bull; Live Operations Overview</p>
+        </div>
+
+        <div class="header-actions">
+          <!-- Search Form -->
+          <form method="get" action="{% url 'dashboard:index' %}" class="search-form">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" name="q" class="search-input" placeholder="Search guests, rooms, IDs..." value="{{ search_query }}">
+          </form>
+
+          <button class="btn btn-primary" onclick="openModal('quickBookingModal')">
+            <i class="fa-solid fa-plus"></i> New Booking
+          </button>
+          <a href="{% url 'admin:index' %}" class="btn btn-secondary">
+            <i class="fa-solid fa-gears"></i> Django Admin
+          </a>
+        </div>
+      </header>
+
+      <!-- KPI Metrics Grid -->
+      <section class="kpi-grid">
+        <!-- Revenue Card -->
+        <div class="kpi-card revenue">
+          <div class="kpi-header">
+            <span class="kpi-title">Total Confirmed Revenue</span>
+            <div class="kpi-icon"><i class="fa-solid fa-dollar-sign"></i></div>
+          </div>
+          <div class="kpi-value">${{ total_revenue }}</div>
+          <div class="kpi-footer">
+            <span class="trend-badge trend-up"><i class="fa-solid fa-arrow-trend-up"></i> Monthly</span>
+            <span>${{ monthly_revenue }} this month</span>
+          </div>
+        </div>
+
+        <!-- Occupancy Rate Card -->
+        <div class="kpi-card occupancy">
+          <div class="kpi-header">
+            <span class="kpi-title">Today's Occupancy</span>
+            <div class="kpi-icon"><i class="fa-solid fa-chart-line"></i></div>
+          </div>
+          <div class="kpi-value">{{ occupancy_rate }}%</div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" style="width: {{ occupancy_rate }}%;"></div>
+          </div>
+          <div class="kpi-footer">
+            <span>{{ occupied_today_count }} of {{ active_rooms_count }} active rooms occupied</span>
+          </div>
+        </div>
+
+        <!-- Check-ins Today -->
+        <div class="kpi-card checkin">
+          <div class="kpi-header">
+            <span class="kpi-title">Check-ins Today</span>
+            <div class="kpi-icon"><i class="fa-solid fa-plane-arrival"></i></div>
+          </div>
+          <div class="kpi-value">{{ checkins_today_count }}</div>
+          <div class="kpi-footer">
+            <span class="trend-badge trend-info"><i class="fa-solid fa-clock"></i> Today</span>
+            <span>Expected arrivals</span>
+          </div>
+        </div>
+
+        <!-- Check-outs Today -->
+        <div class="kpi-card checkout">
+          <div class="kpi-header">
+            <span class="kpi-title">Check-outs Today</span>
+            <div class="kpi-icon"><i class="fa-solid fa-plane-departure"></i></div>
+          </div>
+          <div class="kpi-value">{{ checkouts_today_count }}</div>
+          <div class="kpi-footer">
+            <span class="trend-badge trend-info"><i class="fa-solid fa-clock"></i> Today</span>
+            <span>Expected departures</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Charts & Visual Analytics Section -->
+      <section class="charts-grid">
+        <!-- Revenue Trend Line Chart -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title"><i class="fa-solid fa-chart-area" style="color: var(--accent-indigo);"></i> Revenue Growth Trend</div>
+              <div class="card-subtitle">Monthly revenue generated over the last 6 months</div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="revenueChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Room Type Distribution Chart -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title"><i class="fa-solid fa-chart-pie" style="color: var(--accent-emerald);"></i> Room Inventory</div>
+              <div class="card-subtitle">Distribution by Room Category</div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="roomTypeChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Room Availability Matrix Grid -->
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title"><i class="fa-solid fa-grid-2" style="color: var(--accent-blue);"></i> Live Room Status Grid</div>
+            <div class="card-subtitle">Overview of room status, pricing, and active occupancy</div>
+          </div>
+          <div class="filter-tabs" style="margin-bottom:0;">
+            <span class="badge badge-available"><i class="fa-solid fa-circle"></i> Available ({{ available_today_count }})</span>
+            <span class="badge badge-occupied"><i class="fa-solid fa-circle"></i> Occupied ({{ occupied_today_count }})</span>
+            <span class="badge badge-inactive"><i class="fa-solid fa-circle"></i> Maintenance ({{ total_rooms_count|add:"-active_rooms_count" }})</span>
+          </div>
+        </div>
+
+        <div class="rooms-grid">
+          {% for r in rooms %}
+          <div class="room-card">
+            <div class="room-card-header">
+              <span class="room-number">Room {{ r.object.room_number }}</span>
+              <span class="room-type-tag">{{ r.object.room_type.name }}</span>
+            </div>
+
+            <div class="room-price">${{ r.object.price_per_night }} <span style="font-size:0.75rem; color:var(--text-quiet); font-weight:normal;">/ night</span></div>
+
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px;">
+              <span class="badge {{ r.status_class }}">{{ r.status_label }}</span>
+              <form method="post" action="{% url 'dashboard:toggle_room_status' r.object.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-secondary" title="Toggle Maintenance Status">
+                  <i class="fa-solid fa-power-off"></i>
+                </button>
+              </form>
+            </div>
+
+            {% if r.active_booking %}
+            <div style="font-size:0.75rem; background:var(--bg-elevated); padding:6px 8px; border-radius:6px; margin-top:4px; color:var(--text-muted);">
+              <i class="fa-solid fa-user-check"></i> Guest: <strong>{{ r.active_booking.user.username }}</strong>
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <!-- Arrivals & Departures Split Section -->
+      <section class="activity-grid">
+        <!-- Today's Arrivals -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i class="fa-solid fa-plane-arrival" style="color: var(--accent-amber);"></i> Today's Scheduled Arrivals</div>
+          </div>
+          {% if arrivals_today %}
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Guest</th>
+                  <th>Room</th>
+                  <th>Until</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for b in arrivals_today %}
+                <tr>
+                  <td><strong>{{ b.user.get_full_name|default:b.user.username }}</strong></td>
+                  <td>Room {{ b.room.room_number }}</td>
+                  <td>{{ b.check_out|date:"b d" }}</td>
+                  <td>
+                    {% if b.status == 'pending' %}
+                    <form method="post" action="{% url 'dashboard:update_booking_status' b.pk %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="status" value="confirmed">
+                      <button type="submit" class="btn btn-sm btn-success">Confirm Check-in</button>
+                    </form>
+                    {% else %}
+                    <span class="badge badge-confirmed">Checked In</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <p style="color: var(--text-quiet); font-size: 0.88rem; padding: 12px 0;">No guest check-ins scheduled for today.</p>
+          {% endif %}
+        </div>
+
+        <!-- Today's Departures -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i class="fa-solid fa-plane-departure" style="color: var(--accent-purple);"></i> Today's Scheduled Departures</div>
+          </div>
+          {% if departures_today %}
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Guest</th>
+                  <th>Room</th>
+                  <th>From</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for b in departures_today %}
+                <tr>
+                  <td><strong>{{ b.user.get_full_name|default:b.user.username }}</strong></td>
+                  <td>Room {{ b.room.room_number }}</td>
+                  <td>{{ b.check_in|date:"b d" }}</td>
+                  <td>
+                    <span class="badge badge-occupied">Check-out Today</span>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <p style="color: var(--text-quiet); font-size: 0.88rem; padding: 12px 0;">No guest check-outs scheduled for today.</p>
+          {% endif %}
+        </div>
+      </section>
+
+      <!-- Booking Management Table Section -->
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title"><i class="fa-solid fa-list-check" style="color: var(--accent-indigo);"></i> Master Booking Manager</div>
+            <div class="card-subtitle">Filter, confirm, or modify reservations</div>
+          </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="filter-tabs">
+          <a href="{% url 'dashboard:index' %}" class="filter-tab {% if not status_filter %}active{% endif %}">
+            All ({{ total_bookings_count }})
+          </a>
+          <a href="{% url 'dashboard:index' %}?status=pending" class="filter-tab {% if status_filter == 'pending' %}active{% endif %}">
+            Pending ({{ pending_count }})
+          </a>
+          <a href="{% url 'dashboard:index' %}?status=confirmed" class="filter-tab {% if status_filter == 'confirmed' %}active{% endif %}">
+            Confirmed ({{ confirmed_count }})
+          </a>
+          <a href="{% url 'dashboard:index' %}?status=cancelled" class="filter-tab {% if status_filter == 'cancelled' %}active{% endif %}">
+            Cancelled ({{ cancelled_count }})
+          </a>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Booking ID</th>
+                <th>Guest</th>
+                <th>Room</th>
+                <th>Dates</th>
+                <th>Total Price</th>
+                <th>Status</th>
+                <th>Quick Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for b in recent_bookings %}
+              <tr>
+                <td><strong>#{{ b.id }}</strong></td>
+                <td>
+                  <div><strong>{{ b.user.get_full_name|default:b.user.username }}</strong></div>
+                  <div style="font-size:0.75rem; color:var(--text-quiet);">{{ b.user.email }}</div>
+                </td>
+                <td>
+                  <div>Room {{ b.room.room_number }}</div>
+                  <div style="font-size:0.75rem; color:var(--text-quiet);">{{ b.room.room_type.name }}</div>
+                </td>
+                <td>{{ b.check_in|date:"M d, Y" }} &rarr; {{ b.check_out|date:"M d, Y" }}</td>
+                <td><strong style="color:var(--accent-emerald);">${{ b.total_price }}</strong></td>
+                <td><span class="badge badge-{{ b.status }}">{{ b.get_status_display }}</span></td>
+                <td>
+                  <div style="display:flex; gap:6px;">
+                    {% if b.status != 'confirmed' %}
+                    <form method="post" action="{% url 'dashboard:update_booking_status' b.pk %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="status" value="confirmed">
+                      <button type="submit" class="btn btn-sm btn-success" title="Confirm Booking">
+                        <i class="fa-solid fa-check"></i>
+                      </button>
+                    </form>
+                    {% endif %}
+
+                    {% if b.status != 'cancelled' %}
+                    <form method="post" action="{% url 'dashboard:update_booking_status' b.pk %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="status" value="cancelled">
+                      <button type="submit" class="btn btn-sm btn-danger" title="Cancel Booking" onclick="return confirm('Cancel booking #{{ b.pk }}?');">
+                        <i class="fa-solid fa-xmark"></i>
+                      </button>
+                    </form>
+                    {% endif %}
+
+                    <a href="{% url 'admin:bookings_booking_change' b.pk %}" class="btn btn-sm btn-secondary" title="View in Django Admin">
+                      <i class="fa-solid fa-pen-to-square"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="7" style="text-align:center; padding:24px; color:var(--text-quiet);">
+                  No bookings found matching criteria.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Quick Booking Creation Modal -->
+  <div id="quickBookingModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-calendar-plus" style="color:var(--accent-indigo);"></i> Create Quick Reservation</h3>
+        <button class="modal-close" onclick="closeModal('quickBookingModal')">&times;</button>
+      </div>
+
+      <form method="post" action="{% url 'dashboard:quick_booking' %}">
+        {% csrf_token %}
+        <div class="form-group">
+          <label>Select Guest User</label>
+          <select name="user_id" class="form-control" required>
+            {% for u in all_users %}
+            <option value="{{ u.pk }}">{{ u.username }} ({% if u.email %}{{ u.email }}{% else %}No Email{% endif %})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Select Room</label>
+          <select name="room_id" class="form-control" required>
+            {% for r in active_rooms_qs %}
+            <option value="{{ r.pk }}">Room {{ r.room_number }} ({{ r.room_type.name }} — ${{ r.price_per_night }}/night)</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label>Check-in Date</label>
+            <input type="date" name="check_in" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+          </div>
+          <div class="form-group">
+            <label>Check-out Date</label>
+            <input type="date" name="check_out" class="form-control" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Initial Status</label>
+          <select name="status" class="form-control">
+            <option value="confirmed" selected>Confirmed</option>
+            <option value="pending">Pending</option>
+          </select>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('quickBookingModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Booking</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JavaScript for Charts & Modals -->
+  <script>
+    // Modal controls
+    function openModal(id) {
+      document.getElementById(id).classList.add('show');
+    }
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('show');
+    }
+
+    // Initialize Chart.js Data
+    const revenueLabels = {{ chart_labels|safe }};
+    const revenueData = {{ chart_revenue|safe }};
+    const pieLabels = {{ pie_labels|safe }};
+    const pieData = {{ pie_counts|safe }};
+
+    // Revenue Growth Chart
+    const ctxRevenue = document.getElementById('revenueChart').getContext('2d');
+    const revenueGradient = ctxRevenue.createLinearGradient(0, 0, 0, 300);
+    revenueGradient.addColorStop(0, 'rgba(99, 102, 241, 0.4)');
+    revenueGradient.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
+
+    new Chart(ctxRevenue, {
+      type: 'line',
+      data: {
+        labels: revenueLabels,
+        datasets: [{
+          label: 'Revenue ($)',
+          data: revenueData,
+          borderColor: '#6366f1',
+          borderWidth: 3,
+          backgroundColor: revenueGradient,
+          fill: true,
+          tension: 0.4,
+          pointBackgroundColor: '#6366f1',
+          pointBorderColor: '#ffffff',
+          pointHoverRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+            ticks: { color: '#94a3b8' }
+          },
+          y: {
+            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+            ticks: {
+              color: '#94a3b8',
+              callback: function(val) { return '$' + val; }
+            }
+          }
+        }
+      }
+    });
+
+    // Room Inventory Pie Chart
+    const ctxPie = document.getElementById('roomTypeChart').getContext('2d');
+    new Chart(ctxPie, {
+      type: 'doughnut',
+      data: {
+        labels: pieLabels,
+        datasets: [{
+          data: pieData,
+          backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#a855f7', '#3b82f6'],
+          borderWidth: 2,
+          borderColor: '#1e293b'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { color: '#94a3b8', boxWidth: 12 }
+          }
+        },
+        cutout: '70%'
+      }
+    });
+  </script>
+</body>
+</html>

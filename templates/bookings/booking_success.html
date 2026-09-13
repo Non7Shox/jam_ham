@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}Booking Confirmed — Grand Horizon Hotel{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center text-center">
+        <div class="col-lg-6">
+            <i class="bi bi-check-circle-fill text-success display-1"></i>
+            <h1 class="h2 mt-3">Booking Confirmed!</h1>
+            <p class="lead text-muted">Thank you, {{ booking.user.username }}. Your reservation is confirmed.</p>
+
+            <div class="card shadow-sm text-start mt-4">
+                <div class="card-body">
+                    <h5 class="card-title">Booking #{{ booking.pk }}</h5>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2"><strong>Room:</strong> {{ booking.room.room_number }} ({{ booking.room.room_type.name }})</li>
+                        <li class="mb-2"><strong>Check-in:</strong> {{ booking.check_in|date:"F j, Y" }}</li>
+                        <li class="mb-2"><strong>Check-out:</strong> {{ booking.check_out|date:"F j, Y" }}</li>
+                        <li class="mb-2"><strong>Nights:</strong> {{ booking.nights }}</li>
+                        <li class="mb-2"><strong>Total:</strong> <span class="price-tag">${{ booking.total_price }}</span></li>
+                        <li><strong>Status:</strong> <span class="badge bg-success">{{ booking.get_status_display }}</span></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 justify-content-center mt-4">
+                <a href="{% url 'bookings:my_bookings' %}" class="btn btn-hotel">View My Bookings</a>
+                <a href="{% url 'hotels:home' %}" class="btn btn-outline-secondary">Browse More Rooms</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
